@@ -1,0 +1,215 @@
+{
+    "api_endpoints": [
+        {
+            "service": "Authentication Service",
+            "base_url": "/auth",
+            "endpoints": [
+                {
+                    "description": "User Registration",
+                    "method": "POST",
+                    "endpoint": "/auth/register",
+                    "request_body": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "email": "john.doe@example.com",
+                        "phone_number": "+1234567890",
+                        "password": "securepassword"
+                    },
+                    "response_body": {
+                        "message": "User registered successfully",
+                        "user_id": 1
+                    }
+                },
+                {
+                    "description": "User Login",
+                    "method": "POST",
+                    "endpoint": "/auth/login",
+                    "request_body": {
+                        "email": "john.doe@example.com",
+                        "password": "securepassword"
+                    },
+                    "response_body": {
+                        "token": "jwt-token"
+                    }
+                }
+            ]
+        },
+        {
+            "service": "Document Management Service",
+            "base_url": "/documents",
+            "endpoints": [
+                {
+                    "description": "Create Document",
+                    "method": "POST",
+                    "endpoint": "/documents",
+                    "request_body": {
+                        "doc_name": "Passport",
+                        "file_path": "/files/passport.pdf",
+                        "tags": ["identity", "government"],
+                        "user_id": 1,
+                        "document_type_id": 2
+                    },
+                    "response_body": {
+                        "message": "Document created successfully",
+                        "doc_id": 1
+                    }
+                },
+                {
+                    "description": "Get Document",
+                    "method": "GET",
+                    "endpoint": "/documents/{doc_id}",
+                    "response_body": {
+                        "doc_id": 1,
+                        "doc_name": "Passport",
+                        "file_path": "/files/passport.pdf",
+                        "upload_date": "2024-01-01T10:00:00Z",
+                        "expiration_date": "2030-01-01",
+                        "tags": ["identity", "government"],
+                        "user_id": 1,
+                        "document_type_id": 2
+                    }
+                },
+                {
+                    "description": "Update Document",
+                    "method": "PUT",
+                    "endpoint": "/documents/{doc_id}",
+                    "request_body": {
+                        "doc_name": "Passport Updated",
+                        "tags": ["identity", "government", "updated"]
+                    },
+                    "response_body": {
+                        "message": "Document updated successfully"
+                    }
+                },
+                {
+                    "description": "Delete Document",
+                    "method": "DELETE",
+                    "endpoint": "/documents/{doc_id}",
+                    "response_body": {
+                        "message": "Document deleted successfully"
+                    }
+                }
+            ]
+        },
+        {
+            "service": "Search Service",
+            "base_url": "/search",
+            "endpoints": [
+                {
+                    "description": "Search Documents",
+                    "method": "GET",
+                    "endpoint": "/search",
+                    "query_parameters": {
+                        "query": "<search_term>"
+                    },
+                    "response_body": [
+                        {
+                            "doc_id": 1,
+                            "doc_name": "Passport",
+                            "tags": ["identity", "government"]
+                        },
+                        {
+                            "doc_id": 2,
+                            "doc_name": "Driver License",
+                            "tags": ["license", "identity"]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "service": "Access Control Service",
+            "base_url": "/access",
+            "endpoints": [
+                {
+                    "description": "Grant Access",
+                    "method": "POST",
+                    "endpoint": "/access",
+                    "request_body": {
+                        "doc_id": 1,
+                        "user_id": 2,
+                        "permission_level": "read",
+                        "expires_at": "2024-12-31T23:59:59Z"
+                    },
+                    "response_body": {
+                        "message": "Access granted successfully"
+                    }
+                },
+                {
+                    "description": "Revoke Access",
+                    "method": "DELETE",
+                    "endpoint": "/access/{access_control_id}",
+                    "response_body": {
+                        "message": "Access revoked successfully"
+                    }
+                }
+            ]
+        },
+        {
+            "service": "Activity Log Service",
+            "base_url": "/logs",
+            "endpoints": [
+                {
+                    "description": "Get Activity Logs",
+                    "method": "GET",
+                    "endpoint": "/logs",
+                    "query_parameters": {
+                        "user_id": "<user_id>",
+                        "doc_id": "<doc_id>"
+                    },
+                    "response_body": [
+                        {
+                            "log_id": 1,
+                            "action": "Created document",
+                            "timestamp": "2024-01-01T10:00:00Z",
+                            "user_id": 1,
+                            "doc_id": 1
+                        },
+                        {
+                            "log_id": 2,
+                            "action": "Updated document",
+                            "timestamp": "2024-01-02T11:00:00Z",
+                            "user_id": 1,
+                            "doc_id": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "service": "Notification Service",
+            "base_url": "/notifications",
+            "endpoints": [
+                {
+                    "description": "Get Notifications",
+                    "method": "GET",
+                    "endpoint": "/notifications",
+                    "query_parameters": {
+                        "user_id": "<user_id>"
+                    },
+                    "response_body": [
+                        {
+                            "notification_id": 1,
+                            "message": "Document expiration reminder",
+                            "status": "unread",
+                            "sent_at": "2024-01-01T10:00:00Z",
+                            "user_id": 1
+                        }
+                    ]
+                },
+                {
+                    "description": "Mark Notification as Read",
+                    "method": "PUT",
+                    "endpoint": "/notifications/{notification_id}",
+                    "request_body": {
+                        "status": "read"
+                    },
+                    "response_body": {
+                        "message": "Notification status updated"
+                    }
+                }
+            ]
+        }
+    ]
+}
+ 
