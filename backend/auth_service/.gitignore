@@ -1,0 +1,55 @@
+# Maven target directory
+/target/
+
+# Eclipse and IntelliJ IDEA project files
+/.classpath
+/.project
+/.settings/
+/.idea/
+/*.iml
+/*.iws
+/.vscode/
+
+# Maven specific
+/log/
+/!.mvn/wrapper/maven-wrapper.jar
+**/mvnw
+**/mvnw.cmd
+**/target/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Compiled class files
+*.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Temporary files
+*.tmp
+*.swp
+
+# Spring Boot specific files
+spring.log
+
+# Test output
+/test-output/
+
+# Other IDE files
+/.gradle/
+/build/
+/out/
+/bin/
+/.gradle/
+/build/
+/out/
+
+# Ignore Environment
+.env
