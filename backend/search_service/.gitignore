@@ -1,0 +1,26 @@
+# Binaries
+/bin/
+/obj/
+/out/
+/dist/
+
+# Dependencies
+/vendor/
+go.sum
+go.mod
+
+# Editor and system files
+.idea/
+.vscode/
+.DS_Store
+
+# env
+.env
+
+# log
+*.log
+tmp/
+
+# testing
+*.out
+coverage/
