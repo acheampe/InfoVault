@@ -4,3 +4,7 @@
 
 # Python virtual environments
 .venv/
+
+# Ignore Cloudformation
+cloudformation/
+[Cc][Ll][Oo][Uu][Dd][Ff][Oo][Rr][Mm][Aa][Tt][Ii][Oo][Nn]/

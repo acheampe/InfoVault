@@ -21,21 +21,6 @@ CREATE TABLE users (
 );
 
 -- -----------------------------------------------------
--- Entity: Documents
--- -----------------------------------------------------
-CREATE TABLE documents (
-    -- Purpose: Store metadata about user documents.
-    doc_id SERIAL PRIMARY KEY,
-    doc_name VARCHAR(100) NOT NULL,
-    file_path TEXT NOT NULL,
-    upload_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    expiration_date DATE,
-    tags TEXT[], -- Array of tags for categorization and search
-    user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
-    document_type_id INTEGER REFERENCES document_types(document_type_id) ON DELETE CASCADE
-);
-
--- -----------------------------------------------------
 -- Entity: Document Types
 -- -----------------------------------------------------
 CREATE TABLE document_types (
@@ -51,6 +36,21 @@ CREATE TABLE categories (
     -- Purpose: Used to allow users to categorize their documents.
     category_id SERIAL PRIMARY KEY,
     name VARCHAR(100)
+);
+
+-- -----------------------------------------------------
+-- Entity: Documents
+-- -----------------------------------------------------
+CREATE TABLE documents (
+    -- Purpose: Store metadata about user documents.
+    doc_id SERIAL PRIMARY KEY,
+    doc_name VARCHAR(100) NOT NULL,
+    file_path TEXT NOT NULL,
+    upload_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    expiration_date DATE,
+    tags TEXT[], -- Array of tags for categorization and search
+    user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+    document_type_id INTEGER REFERENCES document_types(document_type_id) ON DELETE CASCADE
 );
 
 -- -----------------------------------------------------
