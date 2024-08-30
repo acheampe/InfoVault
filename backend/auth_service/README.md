@@ -18,11 +18,22 @@ auth_service/
 ├── src/
 │   ├── main/
 │   │   ├── java/               # Java source files
+│   │   │   └── com/
+│   │   │       └── infovault/
+│   │   │           ├── InfoVaultApplication.java  # Main application entry point
+│   │   │           ├── config/                    # Configuration classes
+│   │   │           │   └── SecurityConfig.java    # Spring Security configuration
+│   │   │           └── service/                   # Service classes
+│   │   │               └── CognitoService.java    # AWS Cognito integration service
 │   │   ├── resources/
 │   │   │   ├── static/         # Static assets (if any)
 │   │   │   ├── templates/      # Template files (if using any templating engine)
 │   │   │   └── application.properties # Main configuration file
 │   ├── test/                   # Unit and integration tests
+│   │   └── java/
+│   │       └── com/
+│   │           └── infovault/
+│   │               └── InfoVaultApplicationTests.java # Test class for the main application
 │
 ├── .gitignore                  # Git ignore file
 ├── HELP.md                     # Spring Boot help file
