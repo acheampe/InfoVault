@@ -1,4 +1,4 @@
-package com.infovault.InfoVault;
+package com.infovault;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
