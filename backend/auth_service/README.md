@@ -23,6 +23,8 @@ auth_service/
 │   │   │           ├── InfoVaultApplication.java  # Main application entry point
 │   │   │           ├── config/                    # Configuration classes
 │   │   │           │   └── SecurityConfig.java    # Spring Security configuration
+│   │   │           ├── filter/                  # Filters package
+│   │   │           │   └── CognitoJwtAuthFilter.java  # Custom JWT authentication filter
 │   │   │           └── service/                   # Service classes
 │   │   │               └── CognitoService.java    # AWS Cognito integration service
 │   │   ├── resources/
