@@ -16,6 +16,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     phone_number VARCHAR(20) NOT NULL CHECK (phone_number ~ '^[0-9\+\-]+$'), -- Allow only digits, +, and -
     password_hash VARCHAR(255) NOT NULL,
+    is_federated BOOLEAN DEFAULT FALSE, -- indicates if user is a federated user
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMPTZ
 );

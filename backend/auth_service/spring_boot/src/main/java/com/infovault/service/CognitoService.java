@@ -9,20 +9,16 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 // Used to decoded JWT string
 import com.auth0.jwt.JWT;
 
-
 @Service // Marks class as a Spring Service, a type of Spring managed bean
 public class CognitoService{
 
-    @Value("${aws.cognito.clientId}") // Injects the value of 'aws.cognito.clientId'
-    // from application.properties  
+    @Value("${aws.cognito.clientId}") // Injects the value of 'aws.cognito.clientId' from application.properties  
     private String clientId; 
-
 
     // This method verifies the JWT token passed to it
     public boolean verifyToken(String token) {
         // Decodes JWT token but does NOT validate the token
         DecodedJWT jwt = JWT.decode(token); 
-
 
         // Compares clientId from the decoded token with the configured clientId
         // If they match, then token was issued for infovault app
