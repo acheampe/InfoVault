@@ -3,7 +3,7 @@ package com.infovault; // Ensure this matches the package of your main applicati
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(classes = InfoVaultApplication.class) // Explicitly specify the main application class
+@SpringBootTest
 class InfoVaultApplicationTests {
 
     @Test

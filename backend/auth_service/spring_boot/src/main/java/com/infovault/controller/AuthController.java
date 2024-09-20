@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.infovault.model.User;
 import com.infovault.service.UserService;
 import com.infovault.dto.RegistrationResponse;
+import com.infovault.dto.LoginRequest;
+import com.infovault.dto.LoginResponse;
 
 
 @RestController // marks class as a controller where every method returns a domain object instead of a view
@@ -24,5 +26,16 @@ public class AuthController {
         User registeredUser = userService.registerUser(user);
 
         return ResponseEntity.ok(new RegistrationResponse("User registered successfully", registeredUser.getId()));
+    }
+
+    // Endpoint for user login
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
+        String token = userService.loginUser(loginRequest.getEmail(), loginRequest.getPassword());
+        if (token != null) {
+            return ResponseEntity.ok(new LoginResponse(token));
+        } else {
+            return ResponseEntity.status(401).body("Invalid credentials");
+        }
     }
 }
