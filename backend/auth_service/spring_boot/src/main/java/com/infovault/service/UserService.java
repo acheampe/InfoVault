@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.infovault.model.User;
 import com.infovault.repository.UserRepository;
 import com.infovault.security.JwtTokenProvider; 
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -33,5 +34,9 @@ public class UserService {
         } else {
             throw new RuntimeException("Invalid password");
         }
+    }
+
+    public Optional<User> findByUsername(String email) {
+        return userRepository.findByEmail(email);
     }
 }
