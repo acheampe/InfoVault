@@ -22,6 +22,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Updated way to disable CSRF
             .authorizeHttpRequests(auth -> auth // Updated way to authorize HTTP requests
                 .requestMatchers("/", "/public/**").permitAll() // Allows all requests to paths under /public/ without authentication
+                .requestMatchers("/auth/register", "/auth/login").permitAll() 
+                .requestMatchers("/auth/user", "/auth/logout").authenticated() // Requires authentication for all other requests
                 .anyRequest().authenticated() // Requires authentication for all other requests
             )
             .addFilterBefore(cognitoJwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
