@@ -9,6 +9,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.infovault.filter.CognitoJwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration // Marks this class as a configuration class for Spring
 public class SecurityConfig {
@@ -26,8 +27,13 @@ public class SecurityConfig {
                 .requestMatchers("/auth/user", "/auth/logout").authenticated() // Requires authentication for all other requests
                 .anyRequest().authenticated() // Requires authentication for all other requests
             )
-            .addFilterBefore(cognitoJwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
+            .addFilterBefore(cognitoJwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("Authentication failed: " + authException.getMessage());
+                })
+            );
         return http.build(); // Builds and returns the SecurityFilterChain
     }
 
