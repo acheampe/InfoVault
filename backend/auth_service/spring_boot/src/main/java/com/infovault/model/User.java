@@ -8,7 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
+import jakarta.persistence.Column;
 @Entity // maps class to a database
 @Table(name = "users")
 public class User {
@@ -20,6 +20,7 @@ public class User {
     // stores the rest of user's pertinent info
     private String firstName;
     private String lastName;
+    @Column(unique = true, nullable = false)
     private String email;
     private String phoneNumber;
     private String password; // Password should be encrypted in a real application
