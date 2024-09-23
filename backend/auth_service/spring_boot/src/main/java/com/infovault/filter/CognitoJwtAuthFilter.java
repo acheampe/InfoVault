@@ -34,6 +34,15 @@ public class CognitoJwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
+        logger.debug("Request URI: {}", request.getRequestURI());
+        logger.debug("Request method: {}", request.getMethod());
+    
+        if (request.getRequestURI().equals("/auth/register") || request.getRequestURI().equals("/auth/login")) {
+            logger.debug("Skipping authentication for {} {}", request.getMethod(), request.getRequestURI());
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Extract Authorization header
         String authorizationHeader = request.getHeader("Authorization");
         logger.debug("Authorization header: {}", authorizationHeader);

@@ -1,14 +1,15 @@
-package com.infovault; // Ensure this matches the package of your main application class
+package com.infovault;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class InfoVaultApplicationTests {
 
     @Test
     void contextLoads() {
-        // This test simply checks if the Spring application context loads correctly
+        // This test will fail if the application context cannot be loaded
     }
-
 }
