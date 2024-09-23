@@ -9,35 +9,38 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.infovault.model.User;
 import com.infovault.service.UserService;
-import com.infovault.dto.RegistrationResponse;
 import com.infovault.dto.LoginRequest;
 import com.infovault.dto.LoginResponse;
+import com.infovault.dto.UserRegistrationDto;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.http.HttpStatus;
+import com.infovault.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Optional;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController // marks class as a controller where every method returns a domain object instead of a view
 @RequestMapping("/auth") // Base URL for this controller
 public class AuthController {
-
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     @Autowired // marks field as needing dependency injection
     private UserService userService;
 
+
     // Endpoint for user registration
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User user) {
-        User registeredUser = userService.registerUser(user);
-
-        return ResponseEntity.ok(new RegistrationResponse("User registered successfully", registeredUser.getId()));
+    public ResponseEntity<String> registerUser(@RequestBody UserRegistrationDto registrationDto) {
+        userService.registerNewUser(registrationDto);
+        return ResponseEntity.ok("User registered successfully");
     }
 
     // Endpoint for user login
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
+        logger.debug("Login attempt for email: {}", loginRequest.getEmail());
+        logger.debug("Password present: {}", loginRequest.getPassword());
         String token = userService.loginUser(loginRequest.getEmail(), loginRequest.getPassword());
         if (token != null) {
             return ResponseEntity.ok(new LoginResponse(token));
@@ -51,16 +54,16 @@ public class AuthController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
-
+    
         String username = authentication.getName();
         if (username == null || username.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication failed");
         }
-
-        Optional<User> userOptional = userService.findByUsername(username);
-        if (userOptional.isPresent()) {
-            return ResponseEntity.ok(userOptional.get());
-        } else {
+    
+        try {
+            User user = userService.findByUsername(username);
+            return ResponseEntity.ok(user);
+        } catch (UserNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
     }
