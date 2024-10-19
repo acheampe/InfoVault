@@ -9,14 +9,14 @@
 -- Entity: Users
 -- -----------------------------------------------------
 CREATE TABLE users (
-    -- Purpose: Store relevant user info for authentication and profile management.
     user_id SERIAL PRIMARY KEY,
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
-    phone_number VARCHAR(20) NOT NULL CHECK (phone_number ~ '^[0-9\+\-]+$'), -- Allow only digits, +, and -
-    password_hash VARCHAR(255) NOT NULL,
-    is_federated BOOLEAN DEFAULT FALSE, -- indicates if user is a federated user
+    phone_number VARCHAR(20) NOT NULL CHECK (phone_number ~ '^[0-9\+\-]+$'),
+    password_hash VARCHAR(255),
+    is_cognito_user BOOLEAN DEFAULT FALSE,
+    cognito_username VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMPTZ
 );

@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
    Optional<User> findByEmail(String email);
-   //additional query methods can be defined here later
+   Optional<User> findByCognitoUsername(String cognitoUsername);
+   Optional<User> findByIsCognitoUser(Boolean isCognitoUser);
+   
 }

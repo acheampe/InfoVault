@@ -18,34 +18,68 @@ import org.springframework.http.HttpStatus;
 import com.infovault.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-@RestController // marks class as a controller where every method returns a domain object instead of a view
-@RequestMapping("/auth") // Base URL for this controller
+import com.infovault.service.AuthenticationService;
+import com.infovault.service.CognitoService;
+import com.amazonaws.services.cognitoidp.model.InitiateAuthResult;
+
+@RestController
+@RequestMapping("/auth")
 public class AuthController {
-    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
-    @Autowired // marks field as needing dependency injection
+
+    @Autowired
     private UserService userService;
 
+    @Autowired
+    private AuthenticationService authenticationService;
 
-    // Endpoint for user registration
+    @Autowired
+    private CognitoService cognitoService;
+
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody UserRegistrationDto registrationDto) {
-        userService.registerNewUser(registrationDto);
-        return ResponseEntity.ok("User registered successfully");
+    public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDto registrationDto) {
+        boolean isCognitoUser = registrationDto.getIsCognitoUser() != null ? registrationDto.getIsCognitoUser() : false;
+        if (isCognitoUser) {
+            try {
+                System.out.println("Registering Cognito user: " + registrationDto.getEmail());
+                cognitoService.signUp(registrationDto.getEmail(), registrationDto.getPassword(), registrationDto.getEmail());
+                System.out.println("Cognito registration successful");
+                
+                // Ensure the user is also added to the local database
+                System.out.println("Attempting to add user to local database");
+                User localUser = userService.registerNewUser(registrationDto);
+                System.out.println("Local database registration successful: " + localUser.getUserId());
+                
+                return ResponseEntity.ok("User registered successfully with Cognito and local database");
+            } catch (Exception e) {
+                System.err.println("Registration failed: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Registration failed: " + e.getMessage());
+            }
+        } else {
+            userService.registerNewUser(registrationDto);
+            return ResponseEntity.ok("User registered successfully");
+        }
     }
 
-    // Endpoint for user login
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-        logger.debug("Login attempt for email: {}", loginRequest.getEmail());
-        logger.debug("Password present: {}", loginRequest.getPassword());
-        String token = userService.loginUser(loginRequest.getEmail(), loginRequest.getPassword());
-        if (token != null) {
+        System.out.println("Login Request - Email: " + loginRequest.getEmail() + ", Password: " + loginRequest.getPassword());
+        
+        try {
+            String token;
+            if (userService.isCognitoUser(loginRequest.getEmail())) {
+                // Authenticate with Cognito
+                InitiateAuthResult result = cognitoService.login(loginRequest.getEmail(), loginRequest.getPassword());
+                token = result.getAuthenticationResult().getIdToken();
+            } else {
+                // Authenticate with local database
+                token = authenticationService.authenticate(loginRequest.getEmail(), loginRequest.getPassword());
+            }
             return ResponseEntity.ok(new LoginResponse(token));
-        } else {
-            return ResponseEntity.status(401).body("Invalid credentials");
+        } catch (Exception e) {
+            System.err.println("Error during authentication: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication failed: " + e.getMessage());
         }
     }
 
@@ -71,6 +105,8 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         if (authentication != null) {
+            // For Cognito users, token invalidation should be handled on the client side
+            // Here we just clear the server-side session
             new SecurityContextLogoutHandler().logout(request, response, authentication);
         }
         return ResponseEntity.ok("Logged out successfully");

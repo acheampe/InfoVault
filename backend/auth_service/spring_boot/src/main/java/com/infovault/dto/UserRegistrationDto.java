@@ -1,12 +1,20 @@
 package com.infovault.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 public class UserRegistrationDto {
+    @NotBlank(message = "First name is required")
     private String firstName;
+    @NotBlank(message = "Last name is required")
     private String lastName;
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     private String email;
     private String phoneNumber;
+    @NotBlank(message = "Password is required")
     private String password;
-    private Boolean isFederated;
+    private Boolean isCognitoUser = false;
 
     // Getters and setters
     public String getFirstName() {
@@ -49,11 +57,11 @@ public class UserRegistrationDto {
         this.password = password;
     }
 
-    public Boolean getIsFederated() {
-        return isFederated;
+    public Boolean getIsCognitoUser() {
+        return isCognitoUser != null ? isCognitoUser : false; // Provide a default if null
     }
 
-    public void setIsFederated(Boolean isFederated) {
-        this.isFederated = isFederated;
+    public void setIsCognitoUser(Boolean isCognitoUser) {
+        this.isCognitoUser = isCognitoUser;
     }
 }

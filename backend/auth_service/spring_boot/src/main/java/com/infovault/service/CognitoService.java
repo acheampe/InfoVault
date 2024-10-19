@@ -15,24 +15,30 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
-@Service // Marks class as a Spring Service, a type of Spring managed bean
+@Service
 public class CognitoService {
 
     private static final Logger logger = LoggerFactory.getLogger(CognitoService.class);
 
-    @Value("${aws.cognito.userPoolId}") // Injects the value of 'aws.cognito.userPoolId' from application.properties
+    @Value("${aws.cognito.userPoolId}")
     private String userPoolId;
 
-    @Value("${aws.cognito.clientId}") // Injects the value of 'aws.cognito.clientId' from application.properties
+    @Value("${aws.cognito.clientId}")
     private String clientId;
 
-    @Value("${aws.cognito.region}") // Injects the value of 'aws.cognito.region' from application.properties
+    @Value("${aws.cognito.region}")
     private String region;
+
+    @Value("${aws.cognito.clientSecret}")
+    private String clientSecret;
 
     private AWSCognitoIdentityProvider cognitoClient;
 
-    // Initializes the Cognito client after construction
     @PostConstruct
     public void init() {
         cognitoClient = AWSCognitoIdentityProviderClientBuilder.standard()
@@ -41,7 +47,23 @@ public class CognitoService {
                 .build();
     }
 
-    // This method handles user registration
+    private String calculateSecretHash(String username) {
+        String message = username + clientId;
+        SecretKeySpec signingKey = new SecretKeySpec(
+            clientSecret.getBytes(StandardCharsets.UTF_8),
+            "HmacSHA256"
+        );
+
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(signingKey);
+            byte[] rawHmac = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(rawHmac);
+        } catch (Exception e) {
+            throw new RuntimeException("Error calculating SECRET_HASH", e);
+        }
+    }
+
     public SignUpResult signUp(String username, String password, String email) {
         SignUpRequest request = new SignUpRequest()
             .withClientId(clientId)
@@ -49,15 +71,16 @@ public class CognitoService {
             .withPassword(password)
             .withUserAttributes(
                 new AttributeType().withName("email").withValue(email)
-            );
+            )
+            .withSecretHash(calculateSecretHash(username));
         return cognitoClient.signUp(request);
     }
 
-    // This method handles user login
     public InitiateAuthResult login(String username, String password) {
         Map<String, String> authParams = new HashMap<>();
         authParams.put("USERNAME", username);
         authParams.put("PASSWORD", password);
+        authParams.put("SECRET_HASH", calculateSecretHash(username));
 
         InitiateAuthRequest request = new InitiateAuthRequest()
             .withAuthFlow(AuthFlowType.USER_PASSWORD_AUTH)
@@ -67,14 +90,9 @@ public class CognitoService {
         return cognitoClient.initiateAuth(request);
     }
 
-    // This method verifies the JWT token passed to it
     public boolean verifyToken(String token) {
         try {
-            // Decodes JWT token but does NOT validate the token
             DecodedJWT jwt = JWT.decode(token);
-
-            // Compares clientId from the decoded token with the configured clientId
-            // If they match, then token was issued for infovault app
             boolean isValid = clientId.equals(jwt.getAudience().get(0));
             logger.debug("Token audience: {}, Expected clientId: {}, Is valid: {}", 
                          jwt.getAudience().get(0), clientId, isValid);
@@ -85,13 +103,9 @@ public class CognitoService {
         }
     }
 
-    // This method extracts the username from the JWT token
     public String getUsernameFromToken(String token) {
         try {
-            // Decodes JWT token
             DecodedJWT jwt = JWT.decode(token);
-            
-            // Retrieves the 'cognito:username' claim from the token
             String username = jwt.getClaim("cognito:username").asString();
             
             if (username == null || username.isEmpty()) {

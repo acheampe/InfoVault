@@ -30,14 +30,17 @@ public class User {
     @Column(nullable = false, unique = true) // Specifies that the email field must be unique and cannot be null
     private String email;
 
-    @Column(nullable = false) // Specifies that the phoneNumber field cannot be null
+    @Column(name = "phone_number")  // Specifies that the phoneNumber field cannot be null
     private String phoneNumber;
 
-    @Column(nullable = false) // Specifies that the passwordHash field cannot be null
+    @Column
     private String passwordHash; // Password should be encrypted in a real application
 
-    @Column(nullable = false) // Specifies that the isFederated field cannot be null
-    private Boolean isFederated = false; // Indicates if the user is a federated user
+    @Column
+    private Boolean isCognitoUser = false; // Indicates if the user is a federated user
+
+    @Column
+    private String cognitoUsername; // Stores the user's cognito user ID
 
     @Column(nullable = false) // Specifies that the createdAt field cannot be null
     private LocalDateTime createdAt = LocalDateTime.now(); // Stores the timestamp when the user was created
@@ -89,23 +92,20 @@ public class User {
         return passwordHash;
     }
 
-    // Method to set and hash the password for a user
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = hashPassword(passwordHash);
+    // Method to set and hash the password for non-Cognito users
+    public void setPasswordHash(String password) {
+        if (!isCognitoUser) {
+            PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+            this.passwordHash = passwordEncoder.encode(password);
+        }
     }
 
-    // Method to hash the password
-    private String hashPassword(String password) {
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        return passwordEncoder.encode(password);
+    public Boolean getIsCognitoUser() {
+        return isCognitoUser;
     }
 
-    public Boolean getIsFederated() {
-        return isFederated;
-    }
-
-    public void setIsFederated(Boolean isFederated) {
-        this.isFederated = isFederated;
+    public void setIsCognitoUser(Boolean isCognitoUser) {
+        this.isCognitoUser = isCognitoUser;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -122,5 +122,13 @@ public class User {
 
     public void setLastLogin(LocalDateTime lastLogin) {
         this.lastLogin = lastLogin;
+    }
+
+    public String getCognitoUsername() {
+        return cognitoUsername;
+    }
+
+    public void setCognitoUsername(String cognitoUsername) {
+        this.cognitoUsername = cognitoUsername;
     }
 }
