@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration // Marks this class as a configuration class for Spring
 @EnableWebSecurity
+// plays a role in setting up security infrastructure for the application, defining which endpoints are secured and how requests are authenticated
 public class SecurityConfig {
 
     @Autowired // Injects the CognitoJwTAuthFilter into this class
@@ -26,12 +27,11 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) // Updated way to disable CSRF
             .authorizeHttpRequests(auth -> auth // Updated way to authorize HTTP requests
-                .requestMatchers("/", "/public/**").permitAll() // Allows all requests to paths under /public/ without authentication
-                .requestMatchers("/auth/register", "/auth/login").permitAll() 
+                .requestMatchers("auth/", "/auth/register", "/auth/login").permitAll() 
                 .requestMatchers("/auth/user", "/auth/logout").authenticated() // Requires authentication for all other requests
                 .anyRequest().authenticated() // Requires authentication for all other requests
             )
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // set to stateless
             .addFilterBefore(cognitoJwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {

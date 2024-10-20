@@ -3,6 +3,7 @@ package com.infovault.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+// used for registration in the application - transfers registration data
 public class UserRegistrationDto {
     @NotBlank(message = "First name is required")
     private String firstName;

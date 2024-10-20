@@ -1,6 +1,6 @@
 package com.infovault.dto;
 
-// Class to store response for user registration
+// Class to store response for user registration after registration attempt
 public class RegistrationResponse {
 
     private String message;

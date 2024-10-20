@@ -17,6 +17,7 @@ import com.infovault.exception.InvalidInputException;
 import com.infovault.exception.UserNotFoundException;
 import com.infovault.exception.AuthenticationException;
 import com.amazonaws.services.cognitoidp.model.UsernameExistsException;
+import com.infovault.exception.CognitoRegistrationException;
 
 @Service
 public class UserService {
@@ -39,7 +40,6 @@ public class UserService {
     public User registerNewUser(UserRegistrationDto registrationDto) {
         logger.info("Attempting to register new user with email: {}", registrationDto.getEmail());
         validateRegistrationInput(registrationDto);
-    
         User user = new User();
         user.setFirstName(registrationDto.getFirstName().trim());
         user.setLastName(registrationDto.getLastName().trim());
@@ -50,17 +50,16 @@ public class UserService {
             user.setPhoneNumber(null);
         }
         user.setIsCognitoUser(registrationDto.getIsCognitoUser());
-    
         if (registrationDto.getIsCognitoUser()) {
             registerWithCognito(user, registrationDto.getPassword());
         } else {
             user.setPasswordHash(passwordEncoder.encode(registrationDto.getPassword()));
         }
-    
+        
         User savedUser = userRepository.save(user);
         logger.info("New user registered successfully: {}", savedUser.getEmail());
         return savedUser;
-    }
+    } 
     
     private void registerWithCognito(User user, String password) {
         try {
@@ -72,17 +71,11 @@ public class UserService {
             throw new UserAlreadyExistsException("User already exists in Cognito");
         } catch (Exception e) {
             logger.error("Failed to register user with Cognito", e);
-            throw new RuntimeException("Failed to register user with Cognito: " + e.getMessage());
+            throw new CognitoRegistrationException("Failed to register user with Cognito", e);
         }
     }
 
     private void validateRegistrationInput(UserRegistrationDto registrationDto) {
-        if (registrationDto.getFirstName() == null || registrationDto.getFirstName().trim().isEmpty()) {
-            throw new InvalidInputException("First name is required");
-        }
-        if (registrationDto.getLastName() == null || registrationDto.getLastName().trim().isEmpty()) {
-            throw new InvalidInputException("Last name is required");
-        }
         if (registrationDto.getEmail() == null || !isValidEmail(registrationDto.getEmail())) {
             throw new InvalidInputException("Invalid email address: " + registrationDto.getEmail());
         }
@@ -143,5 +136,9 @@ public class UserService {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new UserNotFoundException("User not found"));
         return user.getIsCognitoUser();
+    }
+
+    public boolean userExistsByEmail(String email) {
+        return userRepository.findByEmail(email).isPresent();
     }
 }

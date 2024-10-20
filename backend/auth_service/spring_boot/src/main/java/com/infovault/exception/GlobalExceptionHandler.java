@@ -36,6 +36,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(new ErrorResponse("Authentication failed", ex.getMessage()), HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(CognitoRegistrationException.class)
+    public ResponseEntity<ErrorResponse> handleCognitoRegistrationException(CognitoRegistrationException ex) {
+        logger.error("Cognito registration exception occurred: {}", ex.getMessage());
+        return new ResponseEntity<>(new ErrorResponse("Cognito registration failed", ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     // You can add a catch-all handler for any unhandled exceptions
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {

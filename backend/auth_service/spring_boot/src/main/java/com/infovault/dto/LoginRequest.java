@@ -4,7 +4,7 @@ public class LoginRequest {
    private String email;
    private String password;
 
-   // Getters and Setters
+   // Getters and Setters - defines log in request structure
    public String getEmail() {
         return email;
    }

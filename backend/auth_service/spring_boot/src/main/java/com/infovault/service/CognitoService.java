@@ -73,7 +73,14 @@ public class CognitoService {
                 new AttributeType().withName("email").withValue(email)
             )
             .withSecretHash(calculateSecretHash(username));
-        return cognitoClient.signUp(request);
+        try {
+            SignUpResult result = cognitoClient.signUp(request);
+            logger.info("User {} successfully signed up in Cognito", username);
+            return result;
+        } catch (Exception e) {
+            logger.error("Error signing up user {} in Cognito", username, e);
+            throw e;
+        }
     }
 
     public InitiateAuthResult login(String username, String password) {
@@ -117,6 +124,42 @@ public class CognitoService {
         } catch (JWTDecodeException e) {
             logger.error("Failed to decode JWT token", e);
             throw new IllegalArgumentException("Invalid JWT token", e);
+        }
+    }
+
+    public boolean isUserConfirmed(String username) {
+        try {
+            AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
+                .withUserPoolId(userPoolId)
+                .withUsername(username);
+            AdminGetUserResult getUserResult = cognitoClient.adminGetUser(getUserRequest);
+            return "CONFIRMED".equals(getUserResult.getUserStatus());
+        } catch (UserNotFoundException e) {
+            return false;
+        }
+    }
+    
+    public void resendConfirmationCode(String username) {
+        ResendConfirmationCodeRequest resendConfirmationCodeRequest = new ResendConfirmationCodeRequest()
+            .withClientId(clientId)
+            .withUsername(username);
+        cognitoClient.resendConfirmationCode(resendConfirmationCodeRequest);
+    }
+
+    public boolean doesUserExist(String username) {
+        try {
+            AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
+                .withUserPoolId(userPoolId)
+                .withUsername(username);
+            cognitoClient.adminGetUser(getUserRequest);
+            logger.info("User {} exists in Cognito", username);
+            return true;
+        } catch (UserNotFoundException e) {
+            logger.info("User {} not found in Cognito", username);
+            return false;
+        } catch (Exception e) {
+            logger.error("Error checking if user {} exists in Cognito", username, e);
+            throw e;
         }
     }
 }

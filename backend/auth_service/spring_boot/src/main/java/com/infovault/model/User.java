@@ -21,10 +21,10 @@ public class User {
     private Long userId; // Stores unique identifier for user
 
     // Stores the rest of the user's pertinent info
-    @Column(nullable = false) // Specifies that the firstName field cannot be null
+    @Column
     private String firstName;
 
-    @Column(nullable = false) // Specifies that the lastName field cannot be null
+    @Column
     private String lastName;
 
     @Column(nullable = false, unique = true) // Specifies that the email field must be unique and cannot be null

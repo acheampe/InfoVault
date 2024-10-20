@@ -22,10 +22,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.infovault.service.AuthenticationService;
 import com.infovault.service.CognitoService;
 import com.amazonaws.services.cognitoidp.model.InitiateAuthResult;
+import com.infovault.dto.RegistrationResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+// Handles HTTP requests for authentication and user management
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private UserService userService;
@@ -36,30 +43,54 @@ public class AuthController {
     @Autowired
     private CognitoService cognitoService;
 
+    
+    @GetMapping("/")
+    public String home() {
+        return "Welcome to InfoVault!";
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDto registrationDto) {
         boolean isCognitoUser = registrationDto.getIsCognitoUser() != null ? registrationDto.getIsCognitoUser() : false;
+        
         if (isCognitoUser) {
-            try {
-                System.out.println("Registering Cognito user: " + registrationDto.getEmail());
+            logger.info("Checking if user exists in Cognito: {}", registrationDto.getEmail());
+            boolean userExists = cognitoService.doesUserExist(registrationDto.getEmail());
+            logger.info("User exists in Cognito: {}", userExists);
+            
+            if (userExists) {
+                boolean isConfirmed = cognitoService.isUserConfirmed(registrationDto.getEmail());
+                if (!isConfirmed) {
+                    cognitoService.resendConfirmationCode(registrationDto.getEmail());
+                    return ResponseEntity.status(HttpStatus.ACCEPTED)
+                        .body("User already registered but not confirmed. A new confirmation code has been sent.");
+                } else {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body("User already exists and is confirmed in Cognito. Please login or use a different email.");
+                }
+            } else {
+                logger.info("Attempting to register new Cognito user: {}", registrationDto.getEmail());
                 cognitoService.signUp(registrationDto.getEmail(), registrationDto.getPassword(), registrationDto.getEmail());
-                System.out.println("Cognito registration successful");
-                
-                // Ensure the user is also added to the local database
-                System.out.println("Attempting to add user to local database");
-                User localUser = userService.registerNewUser(registrationDto);
-                System.out.println("Local database registration successful: " + localUser.getUserId());
-                
-                return ResponseEntity.ok("User registered successfully with Cognito and local database");
-            } catch (Exception e) {
-                System.err.println("Registration failed: " + e.getMessage());
-                e.printStackTrace();
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Registration failed: " + e.getMessage());
+                logger.info("Cognito registration successful");
             }
-        } else {
-            userService.registerNewUser(registrationDto);
-            return ResponseEntity.ok("User registered successfully");
         }
+        
+        // Check if user exists in local database
+        if (userService.userExistsByEmail(registrationDto.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("User already exists in local database. Please login or use a different email.");
+        }
+        
+        // Register in local database
+        User localUser = userService.registerNewUser(registrationDto);
+        logger.info("Local database registration successful: {}", localUser.getUserId());
+
+        String responseMessage = isCognitoUser 
+            ? "User " + localUser.getEmail() + " registered successfully. Please check your email to confirm your account."
+            : "User " + localUser.getEmail() + " registered successfully in local database.";
+
+        RegistrationResponse response = new RegistrationResponse(responseMessage, localUser.getUserId());
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login")

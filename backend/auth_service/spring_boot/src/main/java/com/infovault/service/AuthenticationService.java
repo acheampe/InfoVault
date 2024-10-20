@@ -24,6 +24,7 @@ public class AuthenticationService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    // Handles authentication for both local database and Cognito users
     public String authenticate(String email, String password) {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new AuthenticationException("User not found with email: " + email));
