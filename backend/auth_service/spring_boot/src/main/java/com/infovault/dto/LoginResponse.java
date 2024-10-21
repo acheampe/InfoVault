@@ -1,5 +1,6 @@
 package com.infovault.dto;
 
+// Used to wrap authenticaton token on successful login
 public class LoginResponse {
     private String token;
 

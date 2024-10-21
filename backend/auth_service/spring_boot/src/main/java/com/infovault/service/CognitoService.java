@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.infovault.exception.CognitoRegistrationException;
+import com.infovault.exception.UserAlreadyExistsException;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
 import com.amazonaws.services.cognitoidp.model.*;
@@ -15,24 +17,30 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
-@Service // Marks class as a Spring Service, a type of Spring managed bean
+@Service
 public class CognitoService {
 
     private static final Logger logger = LoggerFactory.getLogger(CognitoService.class);
 
-    @Value("${aws.cognito.userPoolId}") // Injects the value of 'aws.cognito.userPoolId' from application.properties
+    @Value("${aws.cognito.userPoolId}")
     private String userPoolId;
 
-    @Value("${aws.cognito.clientId}") // Injects the value of 'aws.cognito.clientId' from application.properties
+    @Value("${aws.cognito.clientId}")
     private String clientId;
 
-    @Value("${aws.cognito.region}") // Injects the value of 'aws.cognito.region' from application.properties
+    @Value("${aws.cognito.region}")
     private String region;
+
+    @Value("${aws.cognito.clientSecret}")
+    private String clientSecret;
 
     private AWSCognitoIdentityProvider cognitoClient;
 
-    // Initializes the Cognito client after construction
     @PostConstruct
     public void init() {
         cognitoClient = AWSCognitoIdentityProviderClientBuilder.standard()
@@ -41,23 +49,50 @@ public class CognitoService {
                 .build();
     }
 
-    // This method handles user registration
-    public SignUpResult signUp(String username, String password, String email) {
-        SignUpRequest request = new SignUpRequest()
-            .withClientId(clientId)
-            .withUsername(username)
-            .withPassword(password)
-            .withUserAttributes(
-                new AttributeType().withName("email").withValue(email)
-            );
-        return cognitoClient.signUp(request);
+    private String calculateSecretHash(String username) {
+        String message = username + clientId;
+        SecretKeySpec signingKey = new SecretKeySpec(
+            clientSecret.getBytes(StandardCharsets.UTF_8),
+            "HmacSHA256"
+        );
+
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(signingKey);
+            byte[] rawHmac = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(rawHmac);
+        } catch (Exception e) {
+            throw new RuntimeException("Error calculating SECRET_HASH", e);
+        }
     }
 
-    // This method handles user login
+public SignUpResult signUp(String username, String password, String email) {
+    SignUpRequest request = new SignUpRequest()
+        .withClientId(clientId)
+        .withUsername(username)
+        .withPassword(password)
+        .withUserAttributes(
+            new AttributeType().withName("email").withValue(email)
+        )
+        .withSecretHash(calculateSecretHash(username));
+    try {
+        SignUpResult result = cognitoClient.signUp(request);
+        logger.info("User {} successfully signed up in Cognito", username);
+        return result;
+    } catch (UsernameExistsException e) {
+        logger.warn("User {} already exists in Cognito", username);
+        throw new UserAlreadyExistsException("User already exists in Cognito");
+    } catch (Exception e) {
+        logger.error("Error signing up user {} in Cognito", username, e);
+        throw new CognitoRegistrationException("Failed to register user with Cognito", e);
+    }
+}
+
     public InitiateAuthResult login(String username, String password) {
         Map<String, String> authParams = new HashMap<>();
         authParams.put("USERNAME", username);
         authParams.put("PASSWORD", password);
+        authParams.put("SECRET_HASH", calculateSecretHash(username));
 
         InitiateAuthRequest request = new InitiateAuthRequest()
             .withAuthFlow(AuthFlowType.USER_PASSWORD_AUTH)
@@ -67,14 +102,9 @@ public class CognitoService {
         return cognitoClient.initiateAuth(request);
     }
 
-    // This method verifies the JWT token passed to it
     public boolean verifyToken(String token) {
         try {
-            // Decodes JWT token but does NOT validate the token
             DecodedJWT jwt = JWT.decode(token);
-
-            // Compares clientId from the decoded token with the configured clientId
-            // If they match, then token was issued for infovault app
             boolean isValid = clientId.equals(jwt.getAudience().get(0));
             logger.debug("Token audience: {}, Expected clientId: {}, Is valid: {}", 
                          jwt.getAudience().get(0), clientId, isValid);
@@ -85,13 +115,9 @@ public class CognitoService {
         }
     }
 
-    // This method extracts the username from the JWT token
     public String getUsernameFromToken(String token) {
         try {
-            // Decodes JWT token
             DecodedJWT jwt = JWT.decode(token);
-            
-            // Retrieves the 'cognito:username' claim from the token
             String username = jwt.getClaim("cognito:username").asString();
             
             if (username == null || username.isEmpty()) {
@@ -103,6 +129,37 @@ public class CognitoService {
         } catch (JWTDecodeException e) {
             logger.error("Failed to decode JWT token", e);
             throw new IllegalArgumentException("Invalid JWT token", e);
+        }
+    }
+
+    public boolean isUserConfirmed(String username) {
+        try {
+            AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
+                .withUserPoolId(userPoolId)
+                .withUsername(username);
+            AdminGetUserResult getUserResult = cognitoClient.adminGetUser(getUserRequest);
+            return "CONFIRMED".equals(getUserResult.getUserStatus());
+        } catch (UserNotFoundException e) {
+            return false;
+        }
+    }
+    
+    public void resendConfirmationCode(String username) {
+        ResendConfirmationCodeRequest resendConfirmationCodeRequest = new ResendConfirmationCodeRequest()
+            .withClientId(clientId)
+            .withUsername(username);
+        cognitoClient.resendConfirmationCode(resendConfirmationCodeRequest);
+    }
+
+    public boolean doesUserExist(String username) {
+        try {
+            AdminGetUserRequest getUserRequest = new AdminGetUserRequest()
+                .withUserPoolId(userPoolId)
+                .withUsername(username);
+            cognitoClient.adminGetUser(getUserRequest);
+            return true;
+        } catch (UserNotFoundException e) {
+            return false;
         }
     }
 }

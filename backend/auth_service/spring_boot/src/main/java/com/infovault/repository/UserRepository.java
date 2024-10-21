@@ -5,9 +5,11 @@ import org.springframework.stereotype.Repository;
 import com.infovault.model.User;
 import java.util.Optional;
 
-@Repository // marks class as a repository
+@Repository // marks class as a repository - used as a point of data abstraction
 public interface UserRepository extends JpaRepository<User, Long> {
 
    Optional<User> findByEmail(String email);
-   //additional query methods can be defined here later
+   Optional<User> findByCognitoUsername(String cognitoUsername);
+   Optional<User> findByIsCognitoUser(Boolean isCognitoUser);
+   
 }

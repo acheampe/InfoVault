@@ -9,40 +9,86 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.infovault.model.User;
 import com.infovault.service.UserService;
-import com.infovault.dto.RegistrationResponse;
 import com.infovault.dto.LoginRequest;
 import com.infovault.dto.LoginResponse;
+import com.infovault.dto.UserRegistrationDto;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.http.HttpStatus;
+import com.infovault.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Optional;
 
+import com.infovault.service.AuthenticationService;
+import com.infovault.service.CognitoService;
+import com.amazonaws.services.cognitoidp.model.InitiateAuthResult;
+import com.infovault.dto.RegistrationResponse;
 
-@RestController // marks class as a controller where every method returns a domain object instead of a view
-@RequestMapping("/auth") // Base URL for this controller
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+// Handles HTTP requests for authentication and user management
+@RestController
+@RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired // marks field as needing dependency injection
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
+    @Autowired
     private UserService userService;
 
-    // Endpoint for user registration
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User user) {
-        User registeredUser = userService.registerUser(user);
+    @Autowired
+    private AuthenticationService authenticationService;
 
-        return ResponseEntity.ok(new RegistrationResponse("User registered successfully", registeredUser.getId()));
+    @Autowired
+    private CognitoService cognitoService;
+
+    
+    @GetMapping("/")
+    public String home() {
+        return "Welcome to InfoVault!";
     }
 
-    // Endpoint for user login
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDto registrationDto) {
+        boolean isCognitoUser = registrationDto.getIsCognitoUser() != null ? registrationDto.getIsCognitoUser() : false;
+        
+        // Check if user exists in local database
+        if (userService.userExistsByEmail(registrationDto.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("User already exists in local database. Please login or use a different email.");
+        }
+        
+        // Register user (this will handle both Cognito and local database registration)
+        User localUser = userService.registerNewUser(registrationDto);
+        logger.info("User registration successful: {}", localUser.getUserId());
+
+        String responseMessage = isCognitoUser 
+            ? "User " + localUser.getEmail() + " registered successfully. Please check your email to confirm your account."
+            : "User " + localUser.getEmail() + " registered successfully in local database.";
+
+        RegistrationResponse response = new RegistrationResponse(responseMessage, localUser.getUserId());
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-        String token = userService.loginUser(loginRequest.getEmail(), loginRequest.getPassword());
-        if (token != null) {
+        System.out.println("Login Request - Email: " + loginRequest.getEmail() + ", Password: " + loginRequest.getPassword());
+        
+        try {
+            String token;
+            if (userService.isCognitoUser(loginRequest.getEmail())) {
+                // Authenticate with Cognito
+                InitiateAuthResult result = cognitoService.login(loginRequest.getEmail(), loginRequest.getPassword());
+                token = result.getAuthenticationResult().getIdToken();
+            } else {
+                // Authenticate with local database
+                token = authenticationService.authenticate(loginRequest.getEmail(), loginRequest.getPassword());
+            }
             return ResponseEntity.ok(new LoginResponse(token));
-        } else {
-            return ResponseEntity.status(401).body("Invalid credentials");
+        } catch (Exception e) {
+            System.err.println("Error during authentication: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication failed: " + e.getMessage());
         }
     }
 
@@ -51,16 +97,16 @@ public class AuthController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
-
+    
         String username = authentication.getName();
         if (username == null || username.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication failed");
         }
-
-        Optional<User> userOptional = userService.findByUsername(username);
-        if (userOptional.isPresent()) {
-            return ResponseEntity.ok(userOptional.get());
-        } else {
+    
+        try {
+            User user = userService.findByUsername(username);
+            return ResponseEntity.ok(user);
+        } catch (UserNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
     }
@@ -68,6 +114,8 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         if (authentication != null) {
+            // For Cognito users, token invalidation should be handled on the client side
+            // Here we just clear the server-side session
             new SecurityContextLogoutHandler().logout(request, response, authentication);
         }
         return ResponseEntity.ok("Logged out successfully");

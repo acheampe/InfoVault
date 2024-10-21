@@ -36,14 +36,15 @@ public class CognitoJwtAuthFilter extends OncePerRequestFilter {
 
         logger.debug("Request URI: {}", request.getRequestURI());
         logger.debug("Request method: {}", request.getMethod());
-    
+
+        // Allows for registration and login without authentication
         if (request.getRequestURI().equals("/auth/register") || request.getRequestURI().equals("/auth/login")) {
             logger.debug("Skipping authentication for {} {}", request.getMethod(), request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extract Authorization header
+        // Extract Authorization header for all other requests
         String authorizationHeader = request.getHeader("Authorization");
         logger.debug("Authorization header: {}", authorizationHeader);
 
