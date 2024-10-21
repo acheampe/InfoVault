@@ -40,6 +40,13 @@ public class UserService {
     public User registerNewUser(UserRegistrationDto registrationDto) {
         logger.info("Attempting to register new user with email: {}", registrationDto.getEmail());
         validateRegistrationInput(registrationDto);
+
+        // Check if user exists in Cognito first
+        if (registrationDto.getIsCognitoUser() && cognitoService.doesUserExist(registrationDto.getEmail())) {
+            logger.warn("User already exists in Cognito: {}", registrationDto.getEmail());
+            throw new UserAlreadyExistsException("User already exists in Cognito - Registration failed, please login");
+        }
+
         User user = new User();
         user.setFirstName(registrationDto.getFirstName().trim());
         user.setLastName(registrationDto.getLastName().trim());
@@ -50,8 +57,18 @@ public class UserService {
             user.setPhoneNumber(null);
         }
         user.setIsCognitoUser(registrationDto.getIsCognitoUser());
+
         if (registrationDto.getIsCognitoUser()) {
-            registerWithCognito(user, registrationDto.getPassword());
+            try {
+                SignUpResult signUpResult = cognitoService.signUp(user.getEmail(), registrationDto.getPassword(), user.getEmail());
+                user.setCognitoUsername(signUpResult.getUserSub());
+            } catch (UserAlreadyExistsException e) {
+                logger.warn("User already exists in Cognito: {}", user.getEmail());
+                throw e;
+            } catch (CognitoRegistrationException e) {
+                logger.error("Failed to register user with Cognito", e);
+                throw e;
+            }
         } else {
             user.setPasswordHash(passwordEncoder.encode(registrationDto.getPassword()));
         }
@@ -61,20 +78,6 @@ public class UserService {
         return savedUser;
     } 
     
-    private void registerWithCognito(User user, String password) {
-        try {
-            SignUpResult signUpResult = cognitoService.signUp(user.getEmail(), password, user.getEmail());
-            user.setCognitoUsername(signUpResult.getUserSub());
-            logger.info("User registered with Cognito. Username: {}", user.getCognitoUsername());
-        } catch (UsernameExistsException e) {
-            logger.warn("User already exists in Cognito: {}", user.getEmail());
-            throw new UserAlreadyExistsException("User already exists in Cognito");
-        } catch (Exception e) {
-            logger.error("Failed to register user with Cognito", e);
-            throw new CognitoRegistrationException("Failed to register user with Cognito", e);
-        }
-    }
-
     private void validateRegistrationInput(UserRegistrationDto registrationDto) {
         if (registrationDto.getEmail() == null || !isValidEmail(registrationDto.getEmail())) {
             throw new InvalidInputException("Invalid email address: " + registrationDto.getEmail());

@@ -53,37 +53,15 @@ public class AuthController {
     public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDto registrationDto) {
         boolean isCognitoUser = registrationDto.getIsCognitoUser() != null ? registrationDto.getIsCognitoUser() : false;
         
-        if (isCognitoUser) {
-            logger.info("Checking if user exists in Cognito: {}", registrationDto.getEmail());
-            boolean userExists = cognitoService.doesUserExist(registrationDto.getEmail());
-            logger.info("User exists in Cognito: {}", userExists);
-            
-            if (userExists) {
-                boolean isConfirmed = cognitoService.isUserConfirmed(registrationDto.getEmail());
-                if (!isConfirmed) {
-                    cognitoService.resendConfirmationCode(registrationDto.getEmail());
-                    return ResponseEntity.status(HttpStatus.ACCEPTED)
-                        .body("User already registered but not confirmed. A new confirmation code has been sent.");
-                } else {
-                    return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body("User already exists and is confirmed in Cognito. Please login or use a different email.");
-                }
-            } else {
-                logger.info("Attempting to register new Cognito user: {}", registrationDto.getEmail());
-                cognitoService.signUp(registrationDto.getEmail(), registrationDto.getPassword(), registrationDto.getEmail());
-                logger.info("Cognito registration successful");
-            }
-        }
-        
         // Check if user exists in local database
         if (userService.userExistsByEmail(registrationDto.getEmail())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body("User already exists in local database. Please login or use a different email.");
         }
         
-        // Register in local database
+        // Register user (this will handle both Cognito and local database registration)
         User localUser = userService.registerNewUser(registrationDto);
-        logger.info("Local database registration successful: {}", localUser.getUserId());
+        logger.info("User registration successful: {}", localUser.getUserId());
 
         String responseMessage = isCognitoUser 
             ? "User " + localUser.getEmail() + " registered successfully. Please check your email to confirm your account."

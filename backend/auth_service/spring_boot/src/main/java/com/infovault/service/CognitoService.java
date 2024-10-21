@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.infovault.exception.CognitoRegistrationException;
+import com.infovault.exception.UserAlreadyExistsException;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProvider;
 import com.amazonaws.services.cognitoidp.AWSCognitoIdentityProviderClientBuilder;
 import com.amazonaws.services.cognitoidp.model.*;
@@ -64,24 +66,27 @@ public class CognitoService {
         }
     }
 
-    public SignUpResult signUp(String username, String password, String email) {
-        SignUpRequest request = new SignUpRequest()
-            .withClientId(clientId)
-            .withUsername(username)
-            .withPassword(password)
-            .withUserAttributes(
-                new AttributeType().withName("email").withValue(email)
-            )
-            .withSecretHash(calculateSecretHash(username));
-        try {
-            SignUpResult result = cognitoClient.signUp(request);
-            logger.info("User {} successfully signed up in Cognito", username);
-            return result;
-        } catch (Exception e) {
-            logger.error("Error signing up user {} in Cognito", username, e);
-            throw e;
-        }
+public SignUpResult signUp(String username, String password, String email) {
+    SignUpRequest request = new SignUpRequest()
+        .withClientId(clientId)
+        .withUsername(username)
+        .withPassword(password)
+        .withUserAttributes(
+            new AttributeType().withName("email").withValue(email)
+        )
+        .withSecretHash(calculateSecretHash(username));
+    try {
+        SignUpResult result = cognitoClient.signUp(request);
+        logger.info("User {} successfully signed up in Cognito", username);
+        return result;
+    } catch (UsernameExistsException e) {
+        logger.warn("User {} already exists in Cognito", username);
+        throw new UserAlreadyExistsException("User already exists in Cognito");
+    } catch (Exception e) {
+        logger.error("Error signing up user {} in Cognito", username, e);
+        throw new CognitoRegistrationException("Failed to register user with Cognito", e);
     }
+}
 
     public InitiateAuthResult login(String username, String password) {
         Map<String, String> authParams = new HashMap<>();
@@ -152,14 +157,9 @@ public class CognitoService {
                 .withUserPoolId(userPoolId)
                 .withUsername(username);
             cognitoClient.adminGetUser(getUserRequest);
-            logger.info("User {} exists in Cognito", username);
             return true;
         } catch (UserNotFoundException e) {
-            logger.info("User {} not found in Cognito", username);
             return false;
-        } catch (Exception e) {
-            logger.error("Error checking if user {} exists in Cognito", username, e);
-            throw e;
         }
     }
 }
